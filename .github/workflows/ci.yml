@@ -26,3 +26,13 @@ jobs:
         with:
           name: pipeline-log
           path: pipeline.log
+	
+      - name: Test FastAPI
+        run: |
+          docker build -t drift-api .
+          docker run -d -p 8000:8000 --name api drift-api
+          sleep 10
+          curl -f -X POST http://localhost:8000/predict \
+               -H "Content-Type: application/json" \
+               -d '{"features": [0.1, -0.2, 0.3] + [0]*17}' || exit 1
+          docker stop api && docker rm api
