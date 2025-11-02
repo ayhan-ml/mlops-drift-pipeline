@@ -3,17 +3,27 @@ from pydantic import BaseModel
 import mlflow.pyfunc
 import pandas as pd
 
-app = FastAPI(title="Drift Classifier API")
+app = FastAPI(title="Drift Classifier API", version="1.0")
 
-# Load from Model Registry
+#Load model from MLflow Model Registry (Latest version)
 model = mlflow.pyfunc.load_model("models:/drift-classifier/Latest")
 
 class Features(BaseModel):
 	features: list[float]
 
-app@.post("/predict")
+@app.get("/")
+def home():
+	return {"message": "Drift Classifier API is LIVE", "status": "healthy"}
+
+@app.post("/predict")
 def predict(data: Features):
-	df = pd.DataFrame([data.features])
-	pred = model.predict(df)[0]
-	prob = model.predict_proba(df)[0].tolist()
-	return {"prediction": int(pred), "probability": prob}
+	try:
+		df = pd.DataFrame([data.features])
+		pred = int(model.predict(df)[0])
+		prob = model.predict_proba(df)[0].tolist()
+		return {
+			"prediction": pred,
+			"probability": prob
+		}
+	except Exception as e:
+		return {"error": str(e)}
