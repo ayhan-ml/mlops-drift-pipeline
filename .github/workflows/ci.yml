@@ -28,10 +28,26 @@ jobs:
         run: |
           docker build -t drift-api .
           docker run -d -p 8000:8000 --name api drift-api
-          sleep 10
+          
+          # Wait for server to start (max 30s)
+          echo "Waiting for API to start..."
+          timeout=30
+          while ! curl -s http://localhost:8000/docs > /dev/null && [ $timeout -gt 0 ]; do
+            sleep 1
+            ((timeout--))
+          done
+          
+          if [ $timeout -eq 0 ]; then
+            echo "API failed to start"
+            docker logs api
+            exit 1
+          fi
+          
+          # Test prediction
           curl -f -X POST http://localhost:8000/predict \
                -H "Content-Type: application/json" \
                -d '{"features": [0.1, -0.2, 0.3] + [0]*17}' || exit 1
+          
           docker stop api && docker rm api
 
       - name: Upload artifacts
